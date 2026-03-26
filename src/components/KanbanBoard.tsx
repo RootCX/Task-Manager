@@ -58,7 +58,7 @@ export default function KanbanBoard({ board }: Props) {
     update: updateCard,
     remove: removeCard,
   } = useAppCollection<Card>(APP_ID, "card", {
-    where: { board_id: board.id, archived: { $ne: true } },
+    where: { board_id: board.id, $or: [{ archived: false }, { archived: null }] },
     orderBy: "position",
     order: "asc",
   });

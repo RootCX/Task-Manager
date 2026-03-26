@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useAppCollection } from "@rootcx/sdk";
 import { toast } from "@rootcx/ui";
 import { IconArrowLeft } from "@tabler/icons-react";
-import { cn } from "@/lib/utils";
-import { Board, BOARD_GRADIENTS } from "@/types";
+import { Board } from "@/types";
 
 const APP_ID = "task_manager";
 
@@ -25,10 +24,7 @@ export default function BoardHeader({ board, onBack, onBoardUpdated }: Props) {
 
   useEffect(() => {
     if (editingTitle)
-      setTimeout(() => {
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }, 30);
+      setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
   }, [editingTitle]);
 
   async function saveTitle() {
@@ -49,72 +45,36 @@ export default function BoardHeader({ board, onBack, onBoardUpdated }: Props) {
   }
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 bg-black/20 backdrop-blur-sm border-b border-white/10 flex-shrink-0">
-      {/* Back */}
+    <div className="flex items-center gap-2 flex-1 min-w-0">
       <button
         onClick={onBack}
-        className="flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium transition-colors px-2 py-1 rounded-lg hover:bg-white/10"
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
-        <IconArrowLeft className="h-4 w-4" />
+        <IconArrowLeft className="h-3.5 w-3.5" />
         Boards
       </button>
-
-      <div className="w-px h-5 bg-white/20" />
-
-      {/* Board title — click to edit */}
+      <span className="text-border text-sm">/</span>
       {editingTitle ? (
         <input
           ref={inputRef}
-          className="text-white font-bold text-lg bg-white/20 rounded-lg px-3 py-1 outline-none focus:ring-2 ring-white/50 min-w-[200px]"
+          className="text-sm font-semibold bg-muted rounded px-2 py-0.5 outline-none focus:ring-2 ring-ring min-w-[120px] max-w-[280px]"
           value={titleValue}
           onChange={(e) => setTitleValue(e.target.value)}
           onBlur={saveTitle}
           onKeyDown={(e) => {
             if (e.key === "Enter") saveTitle();
-            if (e.key === "Escape") {
-              setTitleValue(board.title);
-              setEditingTitle(false);
-            }
+            if (e.key === "Escape") { setTitleValue(board.title); setEditingTitle(false); }
           }}
         />
       ) : (
         <button
           onClick={() => setEditingTitle(true)}
-          className="text-white font-bold text-lg hover:bg-white/10 px-3 py-1 rounded-lg transition-colors"
-          title="Click to rename board"
+          className="text-sm font-semibold text-foreground hover:bg-muted rounded px-2 py-0.5 transition-colors truncate max-w-[280px]"
+          title="Click to rename"
         >
           {board.title}
         </button>
       )}
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Keyboard shortcuts hint */}
-      <div className="hidden lg:flex items-center gap-3 text-white/50 text-xs">
-        <span>
-          <kbd className="bg-white/10 px-1 py-0.5 rounded text-[10px]">Click</kbd>{" "}
-          open card
-        </span>
-        <span>
-          <kbd className="bg-white/10 px-1 py-0.5 rounded text-[10px]">Drag</kbd>{" "}
-          move
-        </span>
-        <span>
-          <kbd className="bg-white/10 px-1 py-0.5 rounded text-[10px]">Esc</kbd>{" "}
-          close
-        </span>
-        <span>
-          <kbd className="bg-white/10 px-1 py-0.5 rounded text-[10px]">
-            2× click
-          </kbd>{" "}
-          rename list
-        </span>
-        <span>
-          <kbd className="bg-white/10 px-1 py-0.5 rounded text-[10px]">Enter</kbd>{" "}
-          add card
-        </span>
-      </div>
     </div>
   );
 }

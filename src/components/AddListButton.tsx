@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { cn } from "@/lib/utils";
+import { Button } from "@rootcx/ui";
 import { IconPlus, IconX } from "@tabler/icons-react";
 
 interface Props {
@@ -16,51 +16,44 @@ export default function AddListButton({ onCreate }: Props) {
   }, [adding]);
 
   function handleCreate() {
-    if (!value.trim()) {
-      setAdding(false);
-      return;
-    }
+    if (!value.trim()) { setAdding(false); return; }
     onCreate(value.trim());
     setValue("");
-    // Keep open for quick multi-list creation
     setTimeout(() => inputRef.current?.focus(), 30);
   }
 
   if (adding) {
     return (
-      <div className="w-72 flex-shrink-0">
-        <div className="rounded-2xl bg-muted/60 backdrop-blur-sm border border-border/50 p-2 space-y-2">
+      <div className="w-64 flex-shrink-0">
+        <div className="rounded-lg bg-muted border border-border p-2 space-y-1.5">
           <input
             ref={inputRef}
-            className="w-full text-sm bg-card rounded-xl px-3 py-2 outline-none focus:ring-2 ring-primary shadow-sm border border-border"
+            className="w-full text-sm bg-background border border-border rounded px-2.5 py-1.5 outline-none focus:ring-1 ring-ring"
             placeholder="List title…"
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleCreate();
-              if (e.key === "Escape") {
-                setValue("");
-                setAdding(false);
-              }
+              if (e.key === "Escape") { setValue(""); setAdding(false); }
             }}
           />
           <div className="flex gap-1.5">
-            <button
-              onClick={handleCreate}
+            <Button
+              size="sm"
+              className="flex-1 h-7 text-xs"
               disabled={!value.trim()}
-              className="flex-1 py-1.5 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              onClick={handleCreate}
             >
               Add list
-            </button>
-            <button
-              onClick={() => {
-                setValue("");
-                setAdding(false);
-              }}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-background/80 transition-colors"
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => { setValue(""); setAdding(false); }}
             >
-              <IconX className="h-4 w-4" />
-            </button>
+              <IconX className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
       </div>
@@ -70,15 +63,10 @@ export default function AddListButton({ onCreate }: Props) {
   return (
     <button
       onClick={() => setAdding(true)}
-      className={cn(
-        "w-72 flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl",
-        "bg-white/10 hover:bg-white/20 text-white/80 hover:text-white",
-        "border border-white/20 hover:border-white/40",
-        "transition-all duration-150 group backdrop-blur-sm"
-      )}
+      className="w-64 flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-border bg-muted/50 text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted transition-all text-sm"
     >
-      <IconPlus className="h-5 w-5 group-hover:scale-110 transition-transform" />
-      <span className="text-sm font-medium">Add another list</span>
+      <IconPlus className="h-4 w-4" />
+      Add another list
     </button>
   );
 }

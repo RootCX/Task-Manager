@@ -360,7 +360,7 @@ export default function KanbanBoard({ board }: Props) {
   if (listsLoading || cardsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white/50" />
+        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -405,9 +405,9 @@ export default function KanbanBoard({ board }: Props) {
           </SortableContext>
 
           {/* Drag overlay — floating ghost */}
-          <DragOverlay dropAnimation={{ duration: 200, easing: "ease" }}>
+          <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
             {activeType === "card" && activeCard ? (
-              <div className="rotate-2 scale-105 opacity-90 w-72">
+              <div className="rotate-1 scale-105 opacity-95 w-64 shadow-lg">
                 <KanbanCard
                   card={activeCard}
                   commentCount={commentCounts[activeCard.id] || 0}
@@ -418,9 +418,9 @@ export default function KanbanBoard({ board }: Props) {
               </div>
             ) : null}
             {activeType === "list" && activeList ? (
-              <div className="opacity-80 rotate-1 scale-[1.02] w-72">
-                <div className="rounded-2xl bg-muted/80 border border-border/50 px-3 py-2.5 shadow-2xl">
-                  <h3 className="text-sm font-semibold">{activeList.title}</h3>
+              <div className="opacity-90 rotate-1 w-64 shadow-lg">
+                <div className="rounded-lg bg-muted border border-border px-2.5 py-2">
+                  <p className="text-sm font-medium">{activeList.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {cardsByList[activeList.id]?.length || 0} cards
                   </p>

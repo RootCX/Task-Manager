@@ -1,0 +1,62 @@
+{
+  "appId": "task_manager",
+  "name": "Kanban Task Manager",
+  "version": "0.0.1",
+  "description": "Visual Kanban board for managing onboarding tasks — Trello-style drag & drop",
+  "dataContract": [
+    {
+      "entityName": "board",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "description", "type": "text" },
+        { "name": "color", "type": "text" },
+        { "name": "position", "type": "number", "required": true }
+      ]
+    },
+    {
+      "entityName": "list",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "board_id", "type": "entity_link", "references": { "entity": "board", "field": "id" }, "required": true },
+        { "name": "position", "type": "number", "required": true },
+        { "name": "color", "type": "text" }
+      ]
+    },
+    {
+      "entityName": "card",
+      "fields": [
+        { "name": "title", "type": "text", "required": true },
+        { "name": "description", "type": "text" },
+        { "name": "list_id", "type": "entity_link", "references": { "entity": "list", "field": "id" }, "required": true },
+        { "name": "board_id", "type": "entity_link", "references": { "entity": "board", "field": "id" }, "required": true },
+        { "name": "position", "type": "number", "required": true },
+        { "name": "labels", "type": "[text]" },
+        { "name": "priority", "type": "text", "enum_values": ["low", "medium", "high", "critical"] },
+        { "name": "due_date", "type": "date" },
+        { "name": "checklist", "type": "json" },
+        { "name": "cover_color", "type": "text" },
+        { "name": "archived", "type": "boolean" }
+      ]
+    },
+    {
+      "entityName": "card_comment",
+      "fields": [
+        { "name": "card_id", "type": "entity_link", "references": { "entity": "card", "field": "id" }, "required": true },
+        { "name": "content", "type": "text", "required": true },
+        { "name": "author_name", "type": "text", "required": true }
+      ]
+    }
+  ],
+  "permissions": {
+    "permissions": [
+      { "key": "board.read", "description": "View boards" },
+      { "key": "board.write", "description": "Create and edit boards" },
+      { "key": "list.read", "description": "View lists" },
+      { "key": "list.write", "description": "Create and edit lists" },
+      { "key": "card.read", "description": "View cards" },
+      { "key": "card.write", "description": "Create and edit cards" },
+      { "key": "card_comment.read", "description": "View comments" },
+      { "key": "card_comment.write", "description": "Post comments" }
+    ]
+  }
+}

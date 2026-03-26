@@ -1,0 +1,325 @@
+import { useState, useRef, useEffect } from "react";
+import { useAppCollection } from "@rootcx/sdk";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Textarea,
+  toast,
+} from "@rootcx/ui";
+import {
+  IconPlus,
+  IconTrash,
+  IconEdit,
+  IconLayoutKanban,
+  IconX,
+} from "@tabler/icons-react";
+import { cn } from "@/lib/utils";
+import { Board, BOARD_GRADIENTS } from "@/types";
+
+const APP_ID = "task_manager";
+
+interface Props {
+  onSelectBoard: (board: Board) => void;
+}
+
+export default function BoardsView({ onSelectBoard }: Props) {
+  const { data: boards, loading, create, update, remove } = useAppCollection<Board>(APP_ID, "board");
+
+  const [showCreate, setShowCreate] = useState(false);
+  const [editBoard, setEditBoard] = useState<Board | null>(null);
+  const [deleteBoard, setDeleteBoard] = useState<Board | null>(null);
+
+  const [formTitle, setFormTitle] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formColor, setFormColor] = useState(BOARD_GRADIENTS[0]);
+
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  const sortedBoards = [...boards].sort((a, b) => a.position - b.position);
+
+  useEffect(() => {
+    if ((showCreate || editBoard) && titleRef.current) {
+      setTimeout(() => titleRef.current?.focus(), 50);
+    }
+  }, [showCreate, editBoard]);
+
+  function openCreate() {
+    setFormTitle("");
+    setFormDesc("");
+    setFormColor(BOARD_GRADIENTS[0]);
+    setShowCreate(true);
+  }
+
+  function openEdit(e: React.MouseEvent, board: Board) {
+    e.stopPropagation();
+    setFormTitle(board.title);
+    setFormDesc(board.description || "");
+    setFormColor(board.color || BOARD_GRADIENTS[0]);
+    setEditBoard(board);
+  }
+
+  async function handleCreate() {
+    if (!formTitle.trim()) return;
+    try {
+      await create({
+        title: formTitle.trim(),
+        description: formDesc.trim() || undefined,
+        color: formColor,
+        position: (sortedBoards.at(-1)?.position ?? 0) + 65536,
+      });
+      toast.success("Board created");
+      setShowCreate(false);
+    } catch {
+      toast.error("Failed to create board");
+    }
+  }
+
+  async function handleUpdate() {
+    if (!editBoard || !formTitle.trim()) return;
+    try {
+      await update(editBoard.id, {
+        title: formTitle.trim(),
+        description: formDesc.trim() || undefined,
+        color: formColor,
+      });
+      toast.success("Board updated");
+      setEditBoard(null);
+    } catch {
+      toast.error("Failed to update board");
+    }
+  }
+
+  async function handleDelete() {
+    if (!deleteBoard) return;
+    try {
+      await remove(deleteBoard.id);
+      toast.success("Board deleted");
+      setDeleteBoard(null);
+    } catch {
+      toast.error("Failed to delete board");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-8 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <IconLayoutKanban className="h-6 w-6 text-primary" />
+            Your Boards
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your onboarding workflows
+          </p>
+        </div>
+        <Button onClick={openCreate} className="gap-2">
+          <IconPlus className="h-4 w-4" />
+          New Board
+        </Button>
+      </div>
+
+      {/* Board Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+        {sortedBoards.map((board) => (
+          <div
+            key={board.id}
+            onClick={() => onSelectBoard(board)}
+            className="relative group cursor-pointer rounded-xl overflow-hidden aspect-video flex flex-col justify-between p-4 shadow-sm hover:shadow-lg transition-all duration-200 hover:-translate-y-0.5"
+          >
+            {/* Gradient background */}
+            <div
+              className={cn(
+                "absolute inset-0 bg-gradient-to-br",
+                board.color || BOARD_GRADIENTS[0]
+              )}
+            />
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-black/10 group-hover:bg-black/20 transition-colors" />
+
+            {/* Actions */}
+            <div className="relative flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => openEdit(e, board)}
+                className="p-1 rounded bg-black/20 hover:bg-black/40 text-white transition-colors"
+              >
+                <IconEdit className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteBoard(board);
+                }}
+                className="p-1 rounded bg-black/20 hover:bg-red-500/80 text-white transition-colors"
+              >
+                <IconTrash className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Title */}
+            <div className="relative">
+              <h3 className="text-white font-semibold text-sm leading-tight drop-shadow">
+                {board.title}
+              </h3>
+              {board.description && (
+                <p className="text-white/70 text-xs mt-0.5 line-clamp-1">
+                  {board.description}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+
+        {/* Add board tile */}
+        <button
+          onClick={openCreate}
+          className="aspect-video rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/50 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-all group"
+        >
+          <IconPlus className="h-8 w-8 group-hover:scale-110 transition-transform" />
+          <span className="text-sm font-medium">Create new board</span>
+        </button>
+      </div>
+
+      {/* Create / Edit Dialog */}
+      <Dialog
+        open={showCreate || !!editBoard}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreate(false);
+            setEditBoard(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editBoard ? "Edit Board" : "Create Board"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Preview */}
+            <div
+              className={cn(
+                "h-24 rounded-lg bg-gradient-to-br flex items-end p-3",
+                formColor
+              )}
+            >
+              <span className="text-white font-semibold text-sm drop-shadow">
+                {formTitle || "Board name"}
+              </span>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Board Title
+              </label>
+              <Input
+                ref={titleRef}
+                value={formTitle}
+                onChange={(e) => setFormTitle(e.target.value)}
+                placeholder="e.g. Client Onboarding Q1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") editBoard ? handleUpdate() : handleCreate();
+                  if (e.key === "Escape") {
+                    setShowCreate(false);
+                    setEditBoard(null);
+                  }
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Description
+              </label>
+              <Textarea
+                value={formDesc}
+                onChange={(e) => setFormDesc(e.target.value)}
+                placeholder="Optional description…"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                Color
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {BOARD_GRADIENTS.map((g) => (
+                  <button
+                    key={g}
+                    onClick={() => setFormColor(g)}
+                    className={cn(
+                      "w-8 h-8 rounded-md bg-gradient-to-br transition-all",
+                      g,
+                      formColor === g
+                        ? "ring-2 ring-offset-2 ring-primary scale-110"
+                        : "hover:scale-105"
+                    )}
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                className="flex-1"
+                disabled={!formTitle.trim()}
+                onClick={editBoard ? handleUpdate : handleCreate}
+              >
+                {editBoard ? "Save Changes" : "Create Board"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowCreate(false);
+                  setEditBoard(null);
+                }}
+              >
+                <IconX className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <Dialog open={!!deleteBoard} onOpenChange={(o) => !o && setDeleteBoard(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Board?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will permanently delete{" "}
+            <strong>"{deleteBoard?.title}"</strong> and all its lists and cards.
+            This action cannot be undone.
+          </p>
+          <div className="flex gap-2 mt-4">
+            <Button
+              variant="destructive"
+              className="flex-1"
+              onClick={handleDelete}
+            >
+              Delete Board
+            </Button>
+            <Button variant="outline" onClick={() => setDeleteBoard(null)}>
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

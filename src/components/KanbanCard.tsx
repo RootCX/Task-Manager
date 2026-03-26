@@ -4,7 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@rootcx/ui";
 import { cn } from "@/lib/utils";
 import { Card, LABEL_COLORS, PRIORITY_CONFIG, LabelColor } from "@/types";
-import { formatDate, isOverdue, isDueSoon } from "@/lib/utils";
+import { formatDate, isOverdue, isDueSoon, normalizePriority } from "@/lib/utils";
 import { IconClock, IconChecklist, IconMessage, IconFlag, IconEdit } from "@tabler/icons-react";
 
 interface Props {
@@ -40,6 +40,7 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
   const checkedCount = checklist.filter((i) => i.checked).length;
   const overdue = isOverdue(card.due_date);
   const dueSoon = isDueSoon(card.due_date);
+  const priority = normalizePriority(card.priority);
 
   function handleSave() {
     const t = titleValue.trim();
@@ -119,16 +120,16 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
         )}
 
         {/* Metadata */}
-        {(card.due_date || checklist.length > 0 || commentCount > 0 || card.priority) && (
+        {(card.due_date || checklist.length > 0 || commentCount > 0 || priority) && (
           <div className="flex items-center flex-wrap gap-1.5 mt-2">
-            {card.priority && (
+            {priority && (
               <span className={cn(
                 "inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded",
-                PRIORITY_CONFIG[card.priority].bg,
-                PRIORITY_CONFIG[card.priority].color
+                PRIORITY_CONFIG[priority].bg,
+                PRIORITY_CONFIG[priority].color
               )}>
                 <IconFlag className="h-2.5 w-2.5" />
-                {PRIORITY_CONFIG[card.priority].label}
+                {PRIORITY_CONFIG[priority].label}
               </span>
             )}
 

@@ -35,7 +35,7 @@ import {
   Priority,
   LabelColor,
 } from "@/types";
-import { formatDate, isOverdue, isDueSoon, uid } from "@/lib/utils";
+import { formatDate, isOverdue, isDueSoon, uid, normalizePriority } from "@/lib/utils";
 
 const APP_ID = "task_manager";
 
@@ -111,6 +111,7 @@ export default function CardDetailModal({ cardId, listTitle, onClose, onCardDele
     : 0;
   const overdue = isOverdue(card.due_date);
   const dueSoon = isDueSoon(card.due_date);
+  const priority = normalizePriority(card.priority);
 
   async function saveTitle() {
     if (!titleValue.trim()) { setTitleValue(card!.title); setEditingTitle(false); return; }
@@ -253,21 +254,21 @@ export default function CardDetailModal({ cardId, listTitle, onClose, onCardDele
                 )}
 
                 {/* Priority + Due date */}
-                {(card.priority || card.due_date) && (
+                {(priority || card.due_date) && (
                   <div className="flex gap-4 flex-wrap">
-                    {card.priority && (
+                    {priority && (
                       <div>
                         <Label className="text-xs uppercase tracking-wide text-muted-foreground mb-1 block">Priority</Label>
                         <button
                           onClick={() => setShowPriorityPicker(true)}
                           className={cn(
                             "flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium border transition-colors hover:opacity-80",
-                            PRIORITY_CONFIG[card.priority].bg,
-                            PRIORITY_CONFIG[card.priority].color
+                            PRIORITY_CONFIG[priority].bg,
+                            PRIORITY_CONFIG[priority].color
                           )}
                         >
                           <IconFlag className="h-3 w-3" />
-                          {PRIORITY_CONFIG[card.priority].label}
+                          {PRIORITY_CONFIG[priority].label}
                         </button>
                       </div>
                     )}

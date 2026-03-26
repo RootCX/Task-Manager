@@ -56,3 +56,10 @@ export function isDueSoon(dateStr: string | undefined): boolean {
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
+
+/** Normalize a priority string to lowercase — guards against agent-created values like "High" */
+export function normalizePriority(p: string | undefined): import("@/types").Priority | undefined {
+  if (!p) return undefined;
+  const lower = p.toLowerCase() as import("@/types").Priority;
+  return ["low", "medium", "high", "critical"].includes(lower) ? lower : undefined;
+}

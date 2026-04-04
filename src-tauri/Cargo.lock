@@ -2934,9 +2934,9 @@ dependencies = [
 
 [[package]]
 name = "rootcx-client"
-version = "0.4.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f7e8f75c674eb8eb036d21135b7ff6538fb4e3815389fe4eef4df6c17c0e88b"
+checksum = "36dd5b2e95eda8f31201cf06fc339a9738937d660b8742c78036bc5a5e9cbf99"
 dependencies = [
  "reqwest 0.12.28",
  "rootcx-types",
@@ -2946,9 +2946,9 @@ dependencies = [
 
 [[package]]
 name = "rootcx-types"
-version = "0.4.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2a66664300abc2a27489bfe448ac15c5ed2fd9b8e03831166a9b3b073ec66659"
+checksum = "b8a22ebf6ac9fe691e90e866b633b4cf6cc2d07deb44a228bdbb946f3e4c70c0"
 dependencies = [
  "serde",
  "serde_json",

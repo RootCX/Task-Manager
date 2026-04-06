@@ -378,7 +378,13 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
                   <button className={SIDEBAR_BTN}><IconUsers className="h-3.5 w-3.5" />Members</button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-60" align="end">
-                  <MemberPicker cardId={cardId} currentUserId={currentUserId} orgUsers={orgUsers} onClose={() => {}} />
+                  <MemberPicker
+                    currentUserId={currentUserId}
+                    orgUsers={orgUsers}
+                    assignees={assignees}
+                    onAdd={async (userId) => { await addAssignee({ card_id: cardId, user_id: userId }); }}
+                    onRemove={removeAssignee}
+                  />
                 </PopoverContent>
               </Popover>
 

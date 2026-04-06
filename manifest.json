@@ -39,6 +39,13 @@
       ]
     },
     {
+      "entityName": "card_assignee",
+      "fields": [
+        { "name": "card_id", "type": "entity_link", "references": { "entity": "card", "field": "id" }, "required": true },
+        { "name": "user_id", "type": "entity_link", "references": { "entity": "core:users", "field": "id" }, "required": true }
+      ]
+    },
+    {
       "entityName": "card_comment",
       "fields": [
         { "name": "card_id", "type": "entity_link", "references": { "entity": "card", "field": "id" }, "required": true },

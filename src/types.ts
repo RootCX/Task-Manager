@@ -57,6 +57,22 @@ export interface Card {
   updated_at: string;
 }
 
+export interface CardAssignee {
+  id: string;
+  card_id: string;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Minimal user shape returned by core:users
+export interface OrgUser {
+  id: string;
+  email: string;
+  username?: string;
+  full_name?: string;
+}
+
 export interface CardComment {
   id: string;
   card_id: string;

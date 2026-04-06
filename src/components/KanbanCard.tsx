@@ -3,19 +3,25 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@rootcx/ui";
 import { cn } from "@/lib/utils";
-import { Card, LABEL_COLORS, PRIORITY_CONFIG, LabelColor } from "@/types";
+import { Card, CardAssignee, OrgUser, LABEL_COLORS, PRIORITY_CONFIG, LabelColor } from "@/types";
 import { formatDate, isOverdue, isDueSoon, normalizePriority } from "@/lib/utils";
 import { IconClock, IconChecklist, IconMessage, IconFlag, IconEdit } from "@tabler/icons-react";
+import { AssigneeAvatars } from "./MemberPicker";
 
 interface Props {
   card: Card;
   commentCount: number;
+  assignees: CardAssignee[];
+  orgUsers: OrgUser[];
   onOpen: (id: string) => void;
   onTitleSave: (id: string, title: string) => void;
+  onSpaceAssign: (id: string) => void;
   isDragging?: boolean;
 }
 
-export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, isDragging }: Props) {
+export default function KanbanCard({
+  card, commentCount, assignees, orgUsers, onOpen, onTitleSave, onSpaceAssign, isDragging,
+}: Props) {
   const {
     attributes,
     listeners,
@@ -27,11 +33,28 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
 
   const [editing, setEditing] = useState(false);
   const [titleValue, setTitleValue] = useState(card.title);
+  const [hovered, setHovered] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (editing) setTimeout(() => { inputRef.current?.focus(); inputRef.current?.select(); }, 30);
   }, [editing]);
+
+  // Space shortcut when card is hovered
+  useEffect(() => {
+    if (!hovered) return;
+    function handler(e: KeyboardEvent) {
+      // Don't fire when typing in an input/textarea
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || editing) return;
+      if (e.code === "Space") {
+        e.preventDefault();
+        onSpaceAssign(card.id);
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [hovered, editing, card.id, onSpaceAssign]);
 
   const style = { transform: CSS.Transform.toString(transform), transition };
 
@@ -49,7 +72,6 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
     setEditing(false);
   }
 
-  // Ghost placeholder while sorting
   if (isSortableDragging) {
     return (
       <div
@@ -64,6 +86,8 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
     <div
       ref={setNodeRef}
       style={style}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={cn(
         "group relative bg-card rounded border border-border",
         "hover:border-ring hover:shadow-sm transition-all duration-100",
@@ -119,8 +143,8 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
           <p className="text-sm text-card-foreground leading-snug">{card.title}</p>
         )}
 
-        {/* Metadata */}
-        {(card.due_date || checklist.length > 0 || commentCount > 0 || priority) && (
+        {/* Metadata row */}
+        {(card.due_date || checklist.length > 0 || commentCount > 0 || priority || assignees.length > 0) && (
           <div className="flex items-center flex-wrap gap-1.5 mt-2">
             {priority && (
               <span className={cn(
@@ -163,6 +187,13 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
                 {commentCount}
               </span>
             )}
+
+            {/* Assignee avatars — pushed to the right */}
+            {assignees.length > 0 && (
+              <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
+                <AssigneeAvatars assignees={assignees} users={orgUsers} />
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -175,6 +206,15 @@ export default function KanbanCard({ card, commentCount, onOpen, onTitleSave, is
       >
         <IconEdit className="h-3 w-3 text-muted-foreground" />
       </button>
+
+      {/* Space shortcut hint — shows on hover when not editing */}
+      {hovered && !editing && assignees.length === 0 && (
+        <div className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          <kbd className="px-1 py-0.5 rounded bg-muted border border-border text-[9px] font-mono text-muted-foreground">
+            Space
+          </kbd>
+        </div>
+      )}
     </div>
   );
 }

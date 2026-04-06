@@ -10,7 +10,8 @@
   },
   "app": {
     "windows": [{ "title": "task_manager", "width": 900, "height": 600 }],
-    "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; img-src 'self' data:" }
+    "security": { "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' https: http://localhost:* http://127.0.0.1:*; img-src 'self' data:" },
+    "withGlobalTauri": true
   },
   "bundle": {
     "active": true,

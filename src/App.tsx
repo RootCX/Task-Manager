@@ -45,7 +45,7 @@ export default function App() {
           {/* Main content */}
           <div className="flex-1 overflow-hidden">
             {selectedBoard ? (
-              <KanbanBoard board={selectedBoard} />
+              <KanbanBoard board={selectedBoard} currentUserId={user.id} />
             ) : (
               <div className="h-full overflow-y-auto">
                 <BoardsView onSelectBoard={setSelectedBoard} />

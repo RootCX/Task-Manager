@@ -4,7 +4,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@rootcx/ui";
 import { cn } from "@/lib/utils";
-import { Card, List } from "@/types";
+import { Card, List, CardAssignee, OrgUser } from "@/types";
 import KanbanCard, { CardDropPlaceholder } from "./KanbanCard";
 import { IconPlus, IconX, IconDots, IconTrash, IconEdit, IconCopy } from "@tabler/icons-react";
 
@@ -12,12 +12,15 @@ interface Props {
   list: List;
   cards: Card[];
   commentCounts: Record<string, number>;
+  assigneesByCard: Record<string, CardAssignee[]>;
+  orgUsers: OrgUser[];
   onCardOpen: (id: string) => void;
   onCardTitleSave: (id: string, title: string) => void;
   onCardCreate: (listId: string, title: string) => void;
   onListUpdate: (id: string, title: string) => void;
   onListDelete: (id: string) => void;
   onListDuplicate: (id: string) => void;
+  onSpaceAssign: (cardId: string) => void;
   isOver?: boolean;
 }
 
@@ -25,12 +28,15 @@ export default function KanbanList({
   list,
   cards,
   commentCounts,
+  assigneesByCard,
+  orgUsers,
   onCardOpen,
   onCardTitleSave,
   onCardCreate,
   onListUpdate,
   onListDelete,
   onListDuplicate,
+  onSpaceAssign,
 }: Props) {
   const {
     attributes: listAttrs,
@@ -200,8 +206,11 @@ export default function KanbanList({
                 key={card.id}
                 card={card}
                 commentCount={commentCounts[card.id] || 0}
+                assignees={assigneesByCard[card.id] || []}
+                orgUsers={orgUsers}
                 onOpen={onCardOpen}
                 onTitleSave={onCardTitleSave}
+                onSpaceAssign={onSpaceAssign}
               />
             ))}
           </SortableContext>

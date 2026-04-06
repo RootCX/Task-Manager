@@ -1,65 +1,43 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { Priority } from "@/types";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+export const cn = (...inputs: ClassValue[]) => twMerge(clsx(inputs));
 
-/** Compute new fractional position between two positions, or at end/beginning */
-export function computePosition(
-  before: number | undefined,
-  after: number | undefined
-): number {
+export function computePosition(before?: number, after?: number): number {
   if (before === undefined && after === undefined) return 65536;
   if (before === undefined) return (after as number) / 2;
-  if (after === undefined) return (before as number) + 65536;
+  if (after === undefined) return before + 65536;
   return (before + after) / 2;
 }
 
-/** Sort by position then created_at */
-export function byPosition<T extends { position: number; created_at: string }>(
-  a: T,
-  b: T
-): number {
-  if (a.position !== b.position) return a.position - b.position;
-  return a.created_at.localeCompare(b.created_at);
+export function byPosition<T extends { position: number; created_at: string }>(a: T, b: T): number {
+  return a.position !== b.position ? a.position - b.position : a.created_at.localeCompare(b.created_at);
 }
 
-/** Format a date string as "Jan 12" or "Jan 12, 2024" */
-export function formatDate(dateStr: string | undefined): string {
+export function formatDate(dateStr?: string): string {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  const now = new Date();
-  const opts: Intl.DateTimeFormatOptions =
-    d.getFullYear() === now.getFullYear()
-      ? { month: "short", day: "numeric" }
-      : { month: "short", day: "numeric", year: "numeric" };
-  return d.toLocaleDateString("en-US", opts);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("en-US", sameYear ? { month: "short", day: "numeric" } : { month: "short", day: "numeric", year: "numeric" });
 }
 
-/** Is the due date overdue? */
-export function isOverdue(dateStr: string | undefined): boolean {
+export function isOverdue(dateStr?: string): boolean {
+  return !!dateStr && new Date(dateStr) < new Date();
+}
+
+export function isDueSoon(dateStr?: string): boolean {
   if (!dateStr) return false;
-  return new Date(dateStr) < new Date();
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return diff > 0 && diff < 86_400_000;
 }
 
-/** Is due date within 24 hours? */
-export function isDueSoon(dateStr: string | undefined): boolean {
-  if (!dateStr) return false;
-  const d = new Date(dateStr);
-  const now = new Date();
-  const diff = d.getTime() - now.getTime();
-  return diff > 0 && diff < 24 * 60 * 60 * 1000;
-}
-
-/** Generate a unique id for optimistic checklist items */
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/** Normalize a priority string to lowercase — guards against agent-created values like "High" */
-export function normalizePriority(p: string | undefined): import("@/types").Priority | undefined {
+export function normalizePriority(p?: string): Priority | undefined {
   if (!p) return undefined;
-  const lower = p.toLowerCase() as import("@/types").Priority;
-  return ["low", "medium", "high", "critical"].includes(lower) ? lower : undefined;
+  const lower = p.toLowerCase() as Priority;
+  return (["low", "medium", "high", "critical"] as Priority[]).includes(lower) ? lower : undefined;
 }

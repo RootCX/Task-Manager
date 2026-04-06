@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Badge } from "@rootcx/ui";
 import { cn } from "@/lib/utils";
 import { Card, CardAssignee, OrgUser, LABEL_COLORS, PRIORITY_CONFIG, LabelColor } from "@/types";
 import { formatDate, isOverdue, isDueSoon, normalizePriority } from "@/lib/utils";

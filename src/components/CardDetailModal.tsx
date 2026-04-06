@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAppCollection, useAppRecord } from "@rootcx/sdk";
 import {
-  Button, Dialog, DialogContent, Input, Label, Textarea, Separator, toast,
+  Button, Dialog, DialogContent, Input, Label, Textarea, Separator,
   Popover, PopoverTrigger, PopoverContent, ConfirmDialog,
 } from "@rootcx/ui";
 import {
@@ -29,7 +29,6 @@ const PREDEFINED_LABELS: Array<{ color: LabelColor; name: string }> = [
   { color: "pink", name: "Marketing" }, { color: "teal", name: "Onboarding" },
 ];
 
-// Module-scoped: prevents ReactMarkdown from recreating component tree on every render
 const MD_COMPONENTS: React.ComponentProps<typeof ReactMarkdown>["components"] = {
   h1: ({ children }) => <h1 className="text-xl font-bold mt-4 mb-1">{children}</h1>,
   h2: ({ children }) => <h2 className="text-lg font-semibold mt-3 mb-1">{children}</h2>,
@@ -57,20 +56,23 @@ interface Props {
   listTitle: string;
   currentUserId: string;
   orgUsers: OrgUser[];
+  // Owned by KanbanBoard — single source of truth
+  assignees: CardAssignee[];
+  onAssigneeToggle: (cardId: string, userId: string) => Promise<void>;
   onClose: () => void;
   onCardDeleted?: () => void;
 }
 
-export default function CardDetailModal({ cardId, listTitle, currentUserId, orgUsers, onClose, onCardDeleted }: Props) {
+export default function CardDetailModal({
+  cardId, listTitle, currentUserId, orgUsers,
+  assignees, onAssigneeToggle,
+  onClose, onCardDeleted,
+}: Props) {
   const { data: card, update, remove } = useAppRecord<Card>(APP_ID, "card", cardId);
   const { data: comments, create: createComment, remove: removeComment } =
     useAppCollection<CardComment>(APP_ID, "card_comment", {
       where: cardId ? { card_id: cardId } : undefined,
       orderBy: "created_at", order: "asc",
-    });
-  const { data: assignees, create: addAssignee, remove: removeAssignee } =
-    useAppCollection<CardAssignee>(APP_ID, "card_assignee", {
-      where: cardId ? { card_id: cardId } : undefined,
     });
 
   const userMap = useMemo(() => new Map(orgUsers.map((u) => [u.id, u])), [orgUsers]);
@@ -96,22 +98,21 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
   useEffect(() => { if (editingDesc) setTimeout(() => descTextareaRef.current?.focus(), 30); }, [editingDesc]);
   useEffect(() => { if (addingCheckItem) setTimeout(() => checkItemRef.current?.focus(), 30); }, [addingCheckItem]);
 
+  // Space = toggle self-assignment
   useEffect(() => {
     if (!cardId) return;
-    async function handler(e: KeyboardEvent) {
+    function handler(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || e.code !== "Space") return;
       e.preventDefault();
-      const existing = assignees.find((a) => a.user_id === currentUserId);
-      if (existing) { await removeAssignee(existing.id); toast.info("Removed from card"); }
-      else { await addAssignee({ card_id: cardId!, user_id: currentUserId }); toast.success("Assigned to card"); }
+      onAssigneeToggle(cardId!, currentUserId);
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [cardId, assignees, currentUserId, addAssignee, removeAssignee]);
+  }, [cardId, currentUserId, onAssigneeToggle]);
 
   if (!cardId || !card) return null;
-  const c = card; // stable non-null ref for nested function bodies
+  const c = card;
 
   const checklist: ChecklistItem[] = c.checklist || [];
   const labels: string[] = c.labels || [];
@@ -146,7 +147,6 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
 
   async function handleDeleteCard() {
     await remove();
-    toast.success("Card deleted");
     onCardDeleted?.();
     onClose();
   }
@@ -211,7 +211,7 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
                       if (!u) return null;
                       const name = getDisplayName(u);
                       return (
-                        <button key={a.id} title={`Remove ${name}`} onClick={() => removeAssignee(a.id)}
+                        <button key={a.id} title={`Remove ${name}`} onClick={() => onAssigneeToggle(cardId, a.user_id)}
                           className="group/avatar flex items-center gap-1.5 rounded-full pr-1.5 border border-border bg-muted hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
                         >
                           <UserAvatar user={u} size="sm" />
@@ -346,19 +346,19 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
                   )}
                 </div>
                 <div className="space-y-3">
-                  {comments.map((c) => (
-                    <div key={c.id} className="flex gap-2 group">
+                  {comments.map((cm) => (
+                    <div key={cm.id} className="flex gap-2 group">
                       <div className="w-7 h-7 rounded-full bg-muted border border-border text-xs font-semibold flex items-center justify-center flex-shrink-0 text-foreground">
-                        {c.author_name[0]}
+                        {cm.author_name[0]}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-xs font-semibold">{c.author_name}</span>
-                          <span className="text-xs text-muted-foreground">{formatDate(c.created_at)}</span>
+                          <span className="text-xs font-semibold">{cm.author_name}</span>
+                          <span className="text-xs text-muted-foreground">{formatDate(cm.created_at)}</span>
                         </div>
-                        <p className="text-sm mt-0.5 bg-muted rounded px-3 py-2 border border-border">{c.content}</p>
+                        <p className="text-sm mt-0.5 bg-muted rounded px-3 py-2 border border-border">{cm.content}</p>
                       </div>
-                      <button onClick={() => removeComment(c.id)} className="opacity-0 group-hover:opacity-100 self-start mt-1 text-muted-foreground hover:text-destructive transition-all">
+                      <button onClick={() => removeComment(cm.id)} className="opacity-0 group-hover:opacity-100 self-start mt-1 text-muted-foreground hover:text-destructive transition-all">
                         <IconTrash className="h-3.5 w-3.5" />
                       </button>
                     </div>
@@ -379,8 +379,7 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
                     currentUserId={currentUserId}
                     orgUsers={orgUsers}
                     assignees={assignees}
-                    onAdd={async (userId) => { await addAssignee({ card_id: cardId, user_id: userId }); }}
-                    onRemove={removeAssignee}
+                    onToggle={(userId) => onAssigneeToggle(cardId, userId)}
                   />
                 </PopoverContent>
               </Popover>
@@ -461,8 +460,6 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
                   )}
                 </PopoverContent>
               </Popover>
-
-
 
               <Separator className="my-2" />
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Actions</p>

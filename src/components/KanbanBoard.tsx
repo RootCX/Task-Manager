@@ -22,7 +22,6 @@ import {
   sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { useAppCollection, useCoreCollection } from "@rootcx/sdk";
-import { toast } from "@rootcx/ui";
 import { Board, List, Card, CardComment, CardAssignee, OrgUser } from "@/types";
 import { byPosition, computePosition } from "@/lib/utils";
 import KanbanList from "./KanbanList";
@@ -63,7 +62,6 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
 
   const { data: comments } = useAppCollection<CardComment>(APP_ID, "card_comment");
 
-  // All assignees for this board's cards
   const {
     data: allAssignees,
     create: createAssignee,
@@ -72,25 +70,21 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
 
   const { data: orgUsers } = useCoreCollection<OrgUser>("users");
 
-  // Local state for optimistic DnD reordering
   const [lists, setLists] = useState<List[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
   const [activeType, setActiveType] = useState<"card" | "list" | null>(null);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
-  // Sync remote → local on first load and when remote changes
   useEffect(() => { setLists([...listsRaw].sort(byPosition)); }, [listsRaw]);
   useEffect(() => { setCards([...cardsRaw].sort(byPosition)); }, [cardsRaw]);
 
-  // Comment counts map
   const commentCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     comments.forEach((c) => { counts[c.card_id] = (counts[c.card_id] || 0) + 1; });
     return counts;
   }, [comments]);
 
-  // Assignees grouped by card
   const assigneesByCard = useMemo(() => {
     const grouped: Record<string, CardAssignee[]> = {};
     allAssignees.forEach((a) => {
@@ -100,7 +94,6 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     return grouped;
   }, [allAssignees]);
 
-  // Cards grouped by list
   const cardsByList = useMemo(() => {
     const grouped: Record<string, Card[]> = {};
     lists.forEach((l) => {
@@ -109,7 +102,6 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     return grouped;
   }, [lists, cards]);
 
-  // Active card/list for overlay
   const activeCard = useMemo(
     () => (activeType === "card" ? cards.find((c) => c.id === activeId) : null),
     [activeId, activeType, cards]
@@ -119,21 +111,17 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     [activeId, activeType, lists]
   );
 
-  // Selected card's list title
   const selectedCardListTitle = useMemo(() => {
     if (!selectedCardId) return "";
     const card = cards.find((c) => c.id === selectedCardId);
-    if (!card) return "";
-    return lists.find((l) => l.id === card.list_id)?.title || "";
+    return card ? lists.find((l) => l.id === card.list_id)?.title ?? "" : "";
   }, [selectedCardId, cards, lists]);
 
-  // --- DnD Sensors ---
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Custom collision detection
   const collisionDetection: CollisionDetection = useCallback(
     (args) => {
       if (activeType === "list") return closestCorners(args);
@@ -144,7 +132,6 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     [activeType]
   );
 
-  // --- DnD Handlers ---
   function onDragStart({ active }: DragStartEvent) {
     const data = active.data.current;
     setActiveType(data?.type === "list" ? "list" : "card");
@@ -196,7 +183,6 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
         await updateList(activeListId, { position: computePosition(reordered[newIdx - 1]?.position, reordered[newIdx + 1]?.position) });
       } catch {
         setLists([...listsRaw].sort(byPosition));
-        toast.error("Failed to move list");
       }
       return;
     }
@@ -213,72 +199,47 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
       });
     } catch {
       setCards([...cardsRaw].sort(byPosition));
-      toast.error("Failed to move card");
     }
   }
 
-  // --- Actions ---
   async function handleCreateCard(listId: string, title: string) {
-    const listCards = cards.filter((c) => c.list_id === listId);
-    const maxPos = listCards.reduce((m, c) => Math.max(m, c.position), 0);
-    try {
-      await createCard({ title, list_id: listId, board_id: board.id, position: maxPos + 65536, archived: false });
-    } catch { toast.error("Failed to add card"); }
+    const maxPos = cards.filter((c) => c.list_id === listId).reduce((m, c) => Math.max(m, c.position), 0);
+    await createCard({ title, list_id: listId, board_id: board.id, position: maxPos + 65536, archived: false });
   }
 
   async function handleCardTitleSave(id: string, title: string) {
-    try { await updateCard(id, { title }); }
-    catch { toast.error("Failed to update card"); }
+    await updateCard(id, { title });
   }
 
   async function handleCreateList(title: string) {
     const maxPos = lists.reduce((m, l) => Math.max(m, l.position), 0);
-    try {
-      await createList({ title, board_id: board.id, position: maxPos + 65536 });
-      toast.success(`List "${title}" created`);
-    } catch { toast.error("Failed to create list"); }
+    await createList({ title, board_id: board.id, position: maxPos + 65536 });
   }
 
   async function handleUpdateList(id: string, title: string) {
-    try { await updateList(id, { title }); }
-    catch { toast.error("Failed to rename list"); }
+    await updateList(id, { title });
   }
 
   async function handleDeleteList(id: string) {
-    const list = lists.find((l) => l.id === id);
-    try {
-      await removeList(id);
-      toast.success(`List "${list?.title}" deleted`);
-    } catch { toast.error("Failed to delete list"); }
+    await removeList(id);
   }
 
   async function handleDuplicateList(id: string) {
     const list = lists.find((l) => l.id === id);
     if (!list) return;
-    try {
-      const newList = await createList({ title: `${list.title} (copy)`, board_id: board.id, position: list.position + 1 });
-      const listCards = cards.filter((c) => c.list_id === id);
-      for (const card of listCards) {
-        await createCard({ title: card.title, description: card.description, list_id: newList.id, board_id: board.id, position: card.position, labels: card.labels, priority: card.priority, due_date: card.due_date, archived: false });
-      }
-      toast.success("List duplicated");
-    } catch { toast.error("Failed to duplicate list"); }
-  }
-
-  // Space shortcut: toggle current user assignment on hovered/focused card
-  async function handleSpaceAssign(cardId: string) {
-    const cardAssignees = assigneesByCard[cardId] || [];
-    const existing = cardAssignees.find((a) => a.user_id === currentUserId);
-    if (existing) {
-      await removeAssignee(existing.id);
-      toast.info("Removed from card");
-    } else {
-      await createAssignee({ card_id: cardId, user_id: currentUserId });
-      toast.success("Assigned to card");
+    const newList = await createList({ title: `${list.title} (copy)`, board_id: board.id, position: list.position + 1 });
+    for (const card of cards.filter((c) => c.list_id === id)) {
+      await createCard({ title: card.title, description: card.description, list_id: newList.id, board_id: board.id, position: card.position, labels: card.labels, priority: card.priority, due_date: card.due_date, archived: false });
     }
   }
 
-  // Keyboard shortcuts
+  // Idempotent toggle — prevents duplicate assignments
+  async function toggleAssignee(cardId: string, userId: string) {
+    const existing = (assigneesByCard[cardId] || []).find((a) => a.user_id === userId);
+    if (existing) await removeAssignee(existing.id);
+    else await createAssignee({ card_id: cardId, user_id: userId });
+  }
+
   useEffect(() => {
     function handler(e: KeyboardEvent) {
       if (e.key === "Escape" && selectedCardId) setSelectedCardId(null);
@@ -321,7 +282,7 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
                   onListUpdate={handleUpdateList}
                   onListDelete={handleDeleteList}
                   onListDuplicate={handleDuplicateList}
-                  onSpaceAssign={handleSpaceAssign}
+                  onSpaceAssign={(cardId) => toggleAssignee(cardId, currentUserId)}
                 />
               ))}
               <AddListButton onCreate={handleCreateList} />
@@ -360,6 +321,8 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
         listTitle={selectedCardListTitle}
         currentUserId={currentUserId}
         orgUsers={orgUsers}
+        assignees={selectedCardId ? (assigneesByCard[selectedCardId] || []) : []}
+        onAssigneeToggle={toggleAssignee}
         onClose={() => setSelectedCardId(null)}
         onCardDeleted={() => setSelectedCardId(null)}
       />

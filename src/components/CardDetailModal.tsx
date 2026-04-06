@@ -56,19 +56,18 @@ interface Props {
   listTitle: string;
   currentUserId: string;
   orgUsers: OrgUser[];
-  // Owned by KanbanBoard — single source of truth
   assignees: CardAssignee[];
   onAssigneeToggle: (cardId: string, userId: string) => Promise<void>;
+  /** KanbanBoard owns delete: handles optimistic removal + child cleanup */
+  onDeleteCard: (cardId: string) => Promise<void>;
   onClose: () => void;
-  onCardDeleted?: () => void;
 }
 
 export default function CardDetailModal({
   cardId, listTitle, currentUserId, orgUsers,
-  assignees, onAssigneeToggle,
-  onClose, onCardDeleted,
+  assignees, onAssigneeToggle, onDeleteCard, onClose,
 }: Props) {
-  const { data: card, update, remove } = useAppRecord<Card>(APP_ID, "card", cardId);
+  const { data: card, update } = useAppRecord<Card>(APP_ID, "card", cardId);
   const { data: comments, create: createComment, remove: removeComment } =
     useAppCollection<CardComment>(APP_ID, "card_comment", {
       where: cardId ? { card_id: cardId } : undefined,
@@ -94,19 +93,21 @@ export default function CardDetailModal({
     if (card) { setTitleValue(card.title); setDescValue(card.description || ""); }
   }, [card?.id]);
 
-  useEffect(() => { if (editingTitle) setTimeout(() => titleInputRef.current?.focus(), 30); }, [editingTitle]);
-  useEffect(() => { if (editingDesc) setTimeout(() => descTextareaRef.current?.focus(), 30); }, [editingDesc]);
-  useEffect(() => { if (addingCheckItem) setTimeout(() => checkItemRef.current?.focus(), 30); }, [addingCheckItem]);
+  // Auto-focus whichever editing field becomes active
+  useEffect(() => {
+    const ref = editingTitle ? titleInputRef : editingDesc ? descTextareaRef : addingCheckItem ? checkItemRef : null;
+    if (ref) setTimeout(() => ref.current?.focus(), 30);
+  }, [editingTitle, editingDesc, addingCheckItem]);
 
   // Space = toggle self-assignment
   useEffect(() => {
     if (!cardId) return;
-    function handler(e: KeyboardEvent) {
+    const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || e.code !== "Space") return;
       e.preventDefault();
-      onAssigneeToggle(cardId!, currentUserId);
-    }
+      onAssigneeToggle(cardId, currentUserId);
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [cardId, currentUserId, onAssigneeToggle]);
@@ -143,12 +144,6 @@ export default function CardDetailModal({
     if (!commentValue.trim()) return;
     await createComment({ card_id: c.id, content: commentValue.trim(), author_name: "Me" });
     setCommentValue("");
-  }
-
-  async function handleDeleteCard() {
-    await remove();
-    onCardDeleted?.();
-    onClose();
   }
 
   return (
@@ -375,12 +370,7 @@ export default function CardDetailModal({
                   <button className={SIDEBAR_BTN}><IconUsers className="h-3.5 w-3.5" />Members</button>
                 </PopoverTrigger>
                 <PopoverContent className="p-0 w-60" align="end">
-                  <MemberPicker
-                    currentUserId={currentUserId}
-                    orgUsers={orgUsers}
-                    assignees={assignees}
-                    onToggle={(userId) => onAssigneeToggle(cardId, userId)}
-                  />
+                  <MemberPicker currentUserId={currentUserId} orgUsers={orgUsers} assignees={assignees} onToggle={(userId) => onAssigneeToggle(cardId, userId)} />
                 </PopoverContent>
               </Popover>
 
@@ -475,7 +465,7 @@ export default function CardDetailModal({
           onOpenChange={setConfirmDelete}
           title="Delete this card?"
           description="All content, comments, and checklist items will be permanently deleted."
-          onConfirm={handleDeleteCard}
+          onConfirm={() => onDeleteCard(cardId)}
         />
       </DialogContent>
     </Dialog>

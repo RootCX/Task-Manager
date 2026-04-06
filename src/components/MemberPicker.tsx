@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Input } from "@rootcx/ui";
 import { IconSearch, IconCheck } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,8 @@ export function UserAvatar({ user, size = "sm" }: { user: OrgUser; size?: "xs" |
 
 export function AssigneeAvatars({ assignees, users }: { assignees: CardAssignee[]; users: OrgUser[] }) {
   if (!assignees.length) return null;
-  const userMap = new Map(users.map((u) => [u.id, u]));
+  // Caller (KanbanBoard) re-renders infrequently; map is cheap but worth not rebuilding per-card per-frame
+  const userMap = useMemo(() => new Map(users.map((u) => [u.id, u])), [users]);
   const visible = assignees.slice(0, 3);
   const extra = assignees.length - visible.length;
   return (

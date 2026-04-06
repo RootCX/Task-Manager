@@ -1,25 +1,13 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import {
-  DndContext,
-  DragOverlay,
-  DragStartEvent,
-  DragOverEvent,
-  DragEndEvent,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  closestCorners,
-  pointerWithin,
-  rectIntersection,
-  UniqueIdentifier,
-  CollisionDetection,
+  DndContext, DragOverlay, DragStartEvent, DragOverEvent, DragEndEvent,
+  PointerSensor, KeyboardSensor, useSensor, useSensors,
+  closestCorners, pointerWithin, rectIntersection,
+  UniqueIdentifier, CollisionDetection,
 } from "@dnd-kit/core";
 import {
-  SortableContext,
-  horizontalListSortingStrategy,
-  arrayMove,
-  sortableKeyboardCoordinates,
+  SortableContext, horizontalListSortingStrategy,
+  arrayMove, sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { useAppCollection, useCoreCollection } from "@rootcx/sdk";
 import { Board, List, Card, CardComment, CardAssignee, OrgUser } from "@/types";
@@ -31,41 +19,27 @@ import AddListButton from "./AddListButton";
 
 const APP_ID = "task_manager";
 
-interface Props {
-  board: Board;
-  currentUserId: string;
-}
-
-export default function KanbanBoard({ board, currentUserId }: Props) {
+export default function KanbanBoard({ board, currentUserId }: { board: Board; currentUserId: string }) {
   const {
-    data: listsRaw,
-    loading: listsLoading,
-    create: createList,
-    update: updateList,
-    remove: removeList,
+    data: listsRaw, loading: listsLoading,
+    create: createList, update: updateList, remove: removeList,
   } = useAppCollection<List>(APP_ID, "list", {
-    where: { board_id: board.id },
-    orderBy: "position",
-    order: "asc",
+    where: { board_id: board.id }, orderBy: "position", order: "asc",
   });
 
   const {
-    data: cardsRaw,
-    loading: cardsLoading,
-    create: createCard,
-    update: updateCard,
+    data: cardsRaw, loading: cardsLoading,
+    create: createCard, update: updateCard, remove: removeCard,
   } = useAppCollection<Card>(APP_ID, "card", {
     where: { board_id: board.id, $or: [{ archived: false }, { archived: null }] },
-    orderBy: "position",
-    order: "asc",
+    orderBy: "position", order: "asc",
   });
 
-  const { data: comments } = useAppCollection<CardComment>(APP_ID, "card_comment");
+  // Fetch all comments unscoped — filtered client-side via commentCounts memo
+  const { data: comments, remove: removeComment } = useAppCollection<CardComment>(APP_ID, "card_comment");
 
   const {
-    data: allAssignees,
-    create: createAssignee,
-    remove: removeAssignee,
+    data: allAssignees, create: createAssignee, remove: removeAssignee,
   } = useAppCollection<CardAssignee>(APP_ID, "card_assignee");
 
   const { data: orgUsers } = useCoreCollection<OrgUser>("users");
@@ -81,40 +55,37 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
 
   const commentCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    comments.forEach((c) => { counts[c.card_id] = (counts[c.card_id] || 0) + 1; });
+    for (const c of comments) counts[c.card_id] = (counts[c.card_id] || 0) + 1;
     return counts;
   }, [comments]);
 
   const assigneesByCard = useMemo(() => {
     const grouped: Record<string, CardAssignee[]> = {};
-    allAssignees.forEach((a) => {
-      if (!grouped[a.card_id]) grouped[a.card_id] = [];
-      grouped[a.card_id].push(a);
-    });
+    for (const a of allAssignees) {
+      (grouped[a.card_id] ??= []).push(a);
+    }
     return grouped;
   }, [allAssignees]);
 
   const cardsByList = useMemo(() => {
     const grouped: Record<string, Card[]> = {};
-    lists.forEach((l) => {
-      grouped[l.id] = cards.filter((c) => c.list_id === l.id).sort(byPosition);
-    });
+    for (const l of lists) grouped[l.id] = cards.filter((c) => c.list_id === l.id).sort(byPosition);
     return grouped;
   }, [lists, cards]);
 
   const activeCard = useMemo(
-    () => (activeType === "card" ? cards.find((c) => c.id === activeId) : null),
+    () => (activeType === "card" ? cards.find((c) => c.id === activeId) ?? null : null),
     [activeId, activeType, cards]
   );
   const activeList = useMemo(
-    () => (activeType === "list" ? lists.find((l) => `list:${l.id}` === activeId) : null),
+    () => (activeType === "list" ? lists.find((l) => `list:${l.id}` === activeId) ?? null : null),
     [activeId, activeType, lists]
   );
 
   const selectedCardListTitle = useMemo(() => {
     if (!selectedCardId) return "";
     const card = cards.find((c) => c.id === selectedCardId);
-    return card ? lists.find((l) => l.id === card.list_id)?.title ?? "" : "";
+    return card ? (lists.find((l) => l.id === card.list_id)?.title ?? "") : "";
   }, [selectedCardId, cards, lists]);
 
   const sensors = useSensors(
@@ -122,19 +93,14 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const collisionDetection: CollisionDetection = useCallback(
-    (args) => {
-      if (activeType === "list") return closestCorners(args);
-      const pointerCollisions = pointerWithin(args);
-      if (pointerCollisions.length > 0) return pointerCollisions;
-      return rectIntersection(args);
-    },
-    [activeType]
-  );
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    if (activeType === "list") return closestCorners(args);
+    const hits = pointerWithin(args);
+    return hits.length > 0 ? hits : rectIntersection(args);
+  }, [activeType]);
 
   function onDragStart({ active }: DragStartEvent) {
-    const data = active.data.current;
-    setActiveType(data?.type === "list" ? "list" : "card");
+    setActiveType(active.data.current?.type === "list" ? "list" : "card");
     setActiveId(active.id);
   }
 
@@ -143,22 +109,21 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     const activeCardId = active.id as string;
     const overId = over.id as string;
     const overData = over.data.current;
-    let targetListId: string;
-    if (overData?.type === "list") targetListId = overData.list.id;
-    else if (overData?.type === "card") targetListId = overData.card.list_id;
-    else return;
+    const targetListId: string =
+      overData?.type === "list" ? overData.list.id :
+      overData?.type === "card" ? overData.card.list_id : "";
+    if (!targetListId) return;
 
-    const activeCard = cards.find((c) => c.id === activeCardId);
-    if (!activeCard) return;
-    if (activeCard.list_id === targetListId && activeCardId === overId) return;
+    const ac = cards.find((c) => c.id === activeCardId);
+    if (!ac || (ac.list_id === targetListId && activeCardId === overId)) return;
 
     setCards((prev) => {
       const updated = prev.map((c) => c.id === activeCardId ? { ...c, list_id: targetListId } : c);
       const targetCards = updated.filter((c) => c.list_id === targetListId).sort(byPosition);
-      const activeIdx = targetCards.findIndex((c) => c.id === activeCardId);
-      const overIdx = targetCards.findIndex((c) => c.id === overId);
-      if (activeIdx !== -1 && overIdx !== -1 && activeIdx !== overIdx) {
-        const reordered = arrayMove(targetCards, activeIdx, overIdx);
+      const ai = targetCards.findIndex((c) => c.id === activeCardId);
+      const oi = targetCards.findIndex((c) => c.id === overId);
+      if (ai !== -1 && oi !== -1 && ai !== oi) {
+        const reordered = arrayMove(targetCards, ai, oi);
         return [...updated.filter((c) => c.list_id !== targetListId), ...reordered];
       }
       return updated;
@@ -171,16 +136,16 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     if (!over) return;
 
     if (activeType === "list") {
-      const activeListId = (active.id as string).replace("list:", "");
-      const overListId = (over.id as string).replace("list:", "");
-      if (activeListId === overListId) return;
-      const oldIdx = lists.findIndex((l) => l.id === activeListId);
-      const newIdx = lists.findIndex((l) => l.id === overListId);
-      if (oldIdx === -1 || newIdx === -1) return;
-      const reordered = arrayMove(lists, oldIdx, newIdx);
+      const aid = (active.id as string).replace("list:", "");
+      const oid = (over.id as string).replace("list:", "");
+      if (aid === oid) return;
+      const oi = lists.findIndex((l) => l.id === oid);
+      const ai = lists.findIndex((l) => l.id === aid);
+      if (ai === -1 || oi === -1) return;
+      const reordered = arrayMove(lists, ai, oi);
       setLists(reordered);
       try {
-        await updateList(activeListId, { position: computePosition(reordered[newIdx - 1]?.position, reordered[newIdx + 1]?.position) });
+        await updateList(aid, { position: computePosition(reordered[oi - 1]?.position, reordered[oi + 1]?.position) });
       } catch {
         setLists([...listsRaw].sort(byPosition));
       }
@@ -191,37 +156,15 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     const card = cards.find((c) => c.id === activeCardId);
     if (!card) return;
     const listCards = cards.filter((c) => c.list_id === card.list_id).sort(byPosition);
-    const cardIdx = listCards.findIndex((c) => c.id === activeCardId);
+    const ci = listCards.findIndex((c) => c.id === activeCardId);
     try {
       await updateCard(activeCardId, {
         list_id: card.list_id,
-        position: computePosition(listCards[cardIdx - 1]?.position, listCards[cardIdx + 1]?.position),
+        position: computePosition(listCards[ci - 1]?.position, listCards[ci + 1]?.position),
       });
     } catch {
       setCards([...cardsRaw].sort(byPosition));
     }
-  }
-
-  async function handleCreateCard(listId: string, title: string) {
-    const maxPos = cards.filter((c) => c.list_id === listId).reduce((m, c) => Math.max(m, c.position), 0);
-    await createCard({ title, list_id: listId, board_id: board.id, position: maxPos + 65536, archived: false });
-  }
-
-  async function handleCardTitleSave(id: string, title: string) {
-    await updateCard(id, { title });
-  }
-
-  async function handleCreateList(title: string) {
-    const maxPos = lists.reduce((m, l) => Math.max(m, l.position), 0);
-    await createList({ title, board_id: board.id, position: maxPos + 65536 });
-  }
-
-  async function handleUpdateList(id: string, title: string) {
-    await updateList(id, { title });
-  }
-
-  async function handleDeleteList(id: string) {
-    await removeList(id);
   }
 
   async function handleDuplicateList(id: string) {
@@ -233,39 +176,41 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
     }
   }
 
-  // Idempotent toggle — prevents duplicate assignments
+  // Idempotent — prevents duplicate assignments
   async function toggleAssignee(cardId: string, userId: string) {
     const existing = (assigneesByCard[cardId] || []).find((a) => a.user_id === userId);
     if (existing) await removeAssignee(existing.id);
     else await createAssignee({ card_id: cardId, user_id: userId });
   }
 
+  async function handleDeleteCard(cardId: string) {
+    // Optimistic removal for instant UI feedback
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
+    setSelectedCardId(null);
+    // Children must be deleted first — FK card_id is NOT NULL, ON DELETE SET NULL would violate it
+    await Promise.all([
+      ...comments.filter((c) => c.card_id === cardId).map((c) => removeComment(c.id)),
+      ...(assigneesByCard[cardId] ?? []).map((a) => removeAssignee(a.id)),
+    ]);
+    await removeCard(cardId);
+  }
+
   useEffect(() => {
-    function handler(e: KeyboardEvent) {
-      if (e.key === "Escape" && selectedCardId) setSelectedCardId(null);
-    }
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape" && selectedCardId) setSelectedCardId(null); };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [selectedCardId]);
 
-  if (listsLoading || cardsLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
+  if (listsLoading || cardsLoading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent" />
+    </div>
+  );
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col">
       <div className="flex-1 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "thin" }}>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={collisionDetection}
-          onDragStart={onDragStart}
-          onDragOver={onDragOver}
-          onDragEnd={onDragEnd}
-        >
+        <DndContext sensors={sensors} collisionDetection={collisionDetection} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd}>
           <SortableContext items={lists.map((l) => `list:${l.id}`)} strategy={horizontalListSortingStrategy}>
             <div className="flex gap-3 p-4 h-full items-start min-w-max">
               {lists.map((list) => (
@@ -277,41 +222,38 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
                   assigneesByCard={assigneesByCard}
                   orgUsers={orgUsers}
                   onCardOpen={setSelectedCardId}
-                  onCardTitleSave={handleCardTitleSave}
-                  onCardCreate={handleCreateCard}
-                  onListUpdate={handleUpdateList}
-                  onListDelete={handleDeleteList}
+                  onCardTitleSave={(id, title) => updateCard(id, { title })}
+                  onCardCreate={(listId, title) => {
+                    const maxPos = cards.filter((c) => c.list_id === listId).reduce((m, c) => Math.max(m, c.position), 0);
+                    return createCard({ title, list_id: listId, board_id: board.id, position: maxPos + 65536, archived: false });
+                  }}
+                  onListUpdate={(id, title) => updateList(id, { title })}
+                  onListDelete={removeList}
                   onListDuplicate={handleDuplicateList}
                   onSpaceAssign={(cardId) => toggleAssignee(cardId, currentUserId)}
                 />
               ))}
-              <AddListButton onCreate={handleCreateList} />
+              <AddListButton onCreate={(title) => {
+                const maxPos = lists.reduce((m, l) => Math.max(m, l.position), 0);
+                return createList({ title, board_id: board.id, position: maxPos + 65536 });
+              }} />
             </div>
           </SortableContext>
 
           <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
-            {activeType === "card" && activeCard ? (
+            {activeType === "card" && activeCard && (
               <div className="rotate-1 scale-105 opacity-95 w-64 shadow-lg">
-                <KanbanCard
-                  card={activeCard}
-                  commentCount={commentCounts[activeCard.id] || 0}
-                  assignees={assigneesByCard[activeCard.id] || []}
-                  orgUsers={orgUsers}
-                  onOpen={() => {}}
-                  onTitleSave={() => {}}
-                  onSpaceAssign={() => {}}
-                  isDragging
-                />
+                <KanbanCard card={activeCard} commentCount={commentCounts[activeCard.id] || 0} assignees={assigneesByCard[activeCard.id] || []} orgUsers={orgUsers} onOpen={() => {}} onTitleSave={() => {}} onSpaceAssign={() => {}} isDragging />
               </div>
-            ) : null}
-            {activeType === "list" && activeList ? (
+            )}
+            {activeType === "list" && activeList && (
               <div className="opacity-90 rotate-1 w-64 shadow-lg">
                 <div className="rounded-lg bg-muted border border-border px-2.5 py-2">
                   <p className="text-sm font-medium">{activeList.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{cardsByList[activeList.id]?.length || 0} cards</p>
                 </div>
               </div>
-            ) : null}
+            )}
           </DragOverlay>
         </DndContext>
       </div>
@@ -323,8 +265,8 @@ export default function KanbanBoard({ board, currentUserId }: Props) {
         orgUsers={orgUsers}
         assignees={selectedCardId ? (assigneesByCard[selectedCardId] || []) : []}
         onAssigneeToggle={toggleAssignee}
+        onDeleteCard={handleDeleteCard}
         onClose={() => setSelectedCardId(null)}
-        onCardDeleted={() => setSelectedCardId(null)}
       />
     </div>
   );

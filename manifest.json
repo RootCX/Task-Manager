@@ -1,8 +1,8 @@
 {
   "appId": "task_manager",
-  "name": "Kanban Task Manager",
+  "name": "Task Manager",
   "version": "0.0.1",
-  "description": "Visual Kanban board for managing onboarding tasks — Trello-style drag & drop",
+  "description": "Kanban board for managing tasks",
   "dataContract": [
     {
       "entityName": "board",

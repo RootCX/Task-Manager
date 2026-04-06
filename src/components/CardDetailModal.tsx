@@ -179,9 +179,6 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
               </h2>
             )}
           </div>
-          <button onClick={onClose} className="mt-1 p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0">
-            <IconX className="h-4 w-4" />
-          </button>
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 pb-5">
@@ -465,12 +462,7 @@ export default function CardDetailModal({ cardId, listTitle, currentUserId, orgU
                 </PopoverContent>
               </Popover>
 
-              <div className="mt-2 px-2 py-1.5 rounded bg-muted/50 border border-border">
-                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                  <kbd className="px-1 py-0.5 rounded bg-background border border-border text-[9px] font-mono">Space</kbd>
-                  assign yourself
-                </p>
-              </div>
+
 
               <Separator className="my-2" />
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Actions</p>

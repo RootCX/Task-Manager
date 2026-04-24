@@ -2,6 +2,7 @@
   "appId": "task_manager",
   "name": "Task Manager",
   "version": "0.0.1",
+  "icon": "assets/icon.png",
   "description": "Kanban board for managing tasks",
   "dataContract": [
     {

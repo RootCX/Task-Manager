@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useAppCollection } from "@rootcx/sdk";
-import { toast } from "@rootcx/ui";
-import { IconArrowLeft } from "@tabler/icons-react";
+import { Button, toast } from "@rootcx/ui";
+import { IconArrowLeft, IconShare } from "@tabler/icons-react";
 import { Board } from "@/types";
+import ShareModal from "@/components/ShareModal";
 
 const APP_ID = "task_manager";
 
@@ -16,6 +17,7 @@ export default function BoardHeader({ board, onBack, onBoardUpdated }: Props) {
   const { update } = useAppCollection<Board>(APP_ID, "board");
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(board.title);
+  const [shareOpen, setShareOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setValue(board.title); }, [board.title]);
@@ -59,6 +61,11 @@ export default function BoardHeader({ board, onBack, onBoardUpdated }: Props) {
           {board.title}
         </button>
       )}
+      <Button variant="ghost" size="sm" onClick={() => setShareOpen(true)} className="ml-2" title="Share board">
+        <IconShare className="h-3.5 w-3.5 mr-1" />
+        Share
+      </Button>
+      {shareOpen && <ShareModal boardId={board.id} onClose={() => setShareOpen(false)} />}
     </div>
   );
 }

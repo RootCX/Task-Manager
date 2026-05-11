@@ -64,7 +64,13 @@
       { "key": "card.read", "description": "View cards" },
       { "key": "card.write", "description": "Create and edit cards" },
       { "key": "card_comment.read", "description": "View comments" },
-      { "key": "card_comment.write", "description": "Post comments" }
+      { "key": "card_comment.write", "description": "Post comments" },
+      { "key": "public.share", "description": "Create public share links for boards" }
+    ]
+  },
+  "public": {
+    "rpcs": [
+      { "name": "get_public_board", "scope": ["board_id"] }
     ]
   }
 }
